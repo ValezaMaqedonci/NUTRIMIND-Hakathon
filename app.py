@@ -295,6 +295,97 @@ hr {
     color: #34D375 !important;
 }
 
+/* NUMBER INPUT - NutriScan */
+[data-testid="stNumberInput"] input {
+    background-color: #163020 !important;
+    color: #F2F7F3 !important;
+    -webkit-text-fill-color: #F2F7F3 !important;
+    border: 1px solid #244A33 !important;
+    border-radius: 10px !important;
+}
+
+/* Number input buttons */
+[data-testid="stNumberInput"] button {
+    background-color: #163020 !important;
+    color: #34D375 !important;
+    border: 1px solid #244A33 !important;
+}
+
+/* Hover */
+[data-testid="stNumberInput"] button:hover {
+    background-color: #244A33 !important;
+}
+/* HIDE SIDEBAR RADIO BUTTONS */
+[data-testid="stSidebar"] input[type="radio"] {
+    display: none !important;
+}
+
+[data-testid="stSidebar"] label > div:first-child {
+    display: none !important;
+}
+
+/* PAGE FADE IN */
+@keyframes pageFade {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.block-container {
+    animation: pageFade 0.7s ease-out;
+}
+
+/* CARD HOVER ANIMATION */
+div.st-key-card,
+[data-testid="stMetric"] {
+    transition: all 0.3s ease;
+}
+
+[data-testid="stMetric"]:hover {
+    transform: translateY(-5px);
+    border-color: #34D375;
+    box-shadow: 0 8px 22px #00000035;
+}
+
+/* BUTTON ANIMATION */
+.stButton > button {
+    transition: all 0.25s ease;
+}
+
+.stButton > button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 16px #34D37540;
+}
+
+/* SIDEBAR ANIMATION */
+[data-testid="stSidebar"] div[role="radiogroup"] label {
+    transition: all 0.25s ease;
+}
+
+[data-testid="stSidebar"] div[role="radiogroup"] label:hover {
+    transform: translateX(5px);
+}
+
+/* HERO ANIMATION */
+@keyframes heroGlow {
+    0%, 100% {
+        box-shadow: 0 0 10px #34D37510;
+    }
+    50% {
+        box-shadow: 0 0 25px #34D37530;
+    }
+}
+
+/* SMOOTH HEADINGS */
+h1, h2, h3 {
+    animation: pageFade 0.8s ease-out;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -303,7 +394,7 @@ hr {
 # SIDEBAR BRAND
 st.sidebar.markdown("""
 <div class="sidebar-brand">
-    <h2>NUTRIMIND AI</h2>
+    <h2>🥗NUTRIMIND AI</h2>
     <p>FOOD INTELLIGENCE</p>
 </div>
 
@@ -317,13 +408,13 @@ st.sidebar.markdown("""
 page = st.sidebar.radio(
     "Navigation",
     [
-        "Home",
-        "FoodVision",
-        "RecipeMentor",
-        "NutriScan",
-        "FreshCheck",
-        "FoodChat",
-        "MealPlanner"
+    "🏠 Home",
+    "🍽️ FoodVision",
+    "👨‍🍳 RecipeMentor",
+    "🥗 NutriScan",
+    "🍃 FreshCheck",
+    "💬 FoodChat",
+    "📅 MealPlanner"
     ],
     label_visibility="collapsed"
 )
@@ -337,7 +428,7 @@ st.sidebar.markdown("""
     border-top: 1px solid #244A33;
 ">
     <p style="
-        color:#34D375;
+color:#DCE9DF;
         font-size:12px;
         font-weight:600;
         margin:0;
@@ -353,7 +444,7 @@ st.sidebar.markdown("""
 
 
 
-if page == "Home":
+if page == "🏠 Home":
 
     st.title("NUTRIMIND AI")
     st.caption("Your intelligent food companion")
@@ -414,8 +505,8 @@ if page == "Home":
 
             st.markdown(f"""
             <div style="
-                background:#171a1d;
-                border:1px solid #30363b;
+background:#163020;
+border:1px solid #244A33;
                 border-radius:14px;
                 padding:22px;
                 min-height:155px;
@@ -443,7 +534,7 @@ if page == "Home":
 
 
 
-elif page == "FoodVision":
+elif page == "🍽️ FoodVision":
 
     st.title("FoodVision")
     st.caption("AI-powered food recognition")
@@ -549,7 +640,7 @@ elif page == "FoodVision":
         st.markdown(st.session_state.foodvision_result)
 
 
-elif page == "RecipeMentor":
+elif page == "👨‍🍳 RecipeMentor":
 
     st.title("RecipeMentor")
     st.caption("Turn your ingredients into delicious recipes.")
@@ -633,7 +724,8 @@ elif page == "RecipeMentor":
         st.subheader("Your AI Recipe")
         st.markdown(st.session_state.recipe_result)
 
-elif page == "NutriScan":
+
+elif page == "🥗 NutriScan":
 
     st.title("NutriScan")
     st.caption("Explore the nutritional information of your food.")
@@ -718,7 +810,7 @@ elif page == "NutriScan":
 
 
 
-elif page == "FreshCheck":
+elif page == "🍃 FreshCheck":
 
     st.title("FreshCheck")
     st.caption("AI-powered visual freshness analysis")
@@ -833,9 +925,9 @@ elif page == "FreshCheck":
         st.markdown(st.session_state.fresh_result)
 
 
-elif page == "FoodChat":
+elif page == "💬 FoodChat":
 
-    st.title("NUTRIMIND AI")
+    st.title("🥗NUTRIMIND AI")
     st.caption("Your intelligent food assistant")
 
     st.markdown("""
@@ -942,7 +1034,7 @@ elif page == "FoodChat":
         })
 
 
-elif page == "MealPlanner":
+elif page == "📅 MealPlanner":
 
     st.title("MealPlanner")
     st.caption("Your personal AI meal planner")
