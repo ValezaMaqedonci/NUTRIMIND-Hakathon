@@ -13,33 +13,307 @@ st.set_page_config(
 
 st.markdown("""
 <style>
+/* Main background */
 .stApp {
-    background-color: #000000 !important;
+    background-color: #0B1911;
+    color: #F2F7F3;
 }
 
-[data-testid="stAppViewContainer"],
-[data-testid="stMain"] {
-    background-color: #000000 !important;
-}
-
-[data-testid="stMain"] h1,
-[data-testid="stMain"] h2,
-[data-testid="stMain"] h3,
-[data-testid="stMain"] p,
-[data-testid="stMain"] span,
-[data-testid="stMain"] label {
-    color: #ffffff !important;
-}
-
+/* Main content */
 .block-container {
     padding-top: 2rem;
+    padding-bottom: 2rem;
+    max-width: 1250px;
 }
+
+/* Sidebar */
+[data-testid="stSidebar"] {
+    background-color: #102418;
+    border-right: 1px solid #244A33;
+}
+
+/* Sidebar text */
+[data-testid="stSidebar"] p,
+[data-testid="stSidebar"] label {
+    color: #DCE9DF;
+}
+
+/* Headings */
+h1, h2, h3 {
+    color: #F2F7F3 !important;
+}
+
+/* Cards */
+[data-testid="stMetric"],
+div.st-key-card {
+    background-color: #163020;
+    border: 1px solid #244A33;
+    border-radius: 14px;
+    padding: 18px;
+}
+
+/* Buttons */
+.stButton > button {
+    background-color: #34D375;
+    color: #0B1911;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    padding: 10px 20px;
+    transition: 0.2s;
+}
+
+.stButton > button:hover {
+    background-color: #27B963;
+    color: #0B1911;
+    border: none;
+}
+
+/* Inputs */
+.stTextInput input,
+.stTextArea textarea,
+.stSelectbox div[data-baseweb="select"] {
+    background-color: #163020;
+    border-color: #244A33;
+    color: white;
+}
+
+/* Dividers */
+hr {
+    border-color: #244A33;
+}
+
+/* Footer */
+.nutri-footer {
+    background-color: #102418;
+    border-top: 1px solid #244A33;
+    padding: 22px;
+    border-radius: 12px;
+    margin-top: 55px;
+    text-align: center;
+}
+
+.nutri-footer h4 {
+    color: #34D375;
+    margin-bottom: 7px;
+}
+
+.nutri-footer p {
+    color: #A8BBAE;
+    font-size: 13px;
+    margin: 0;
+}
+
+/* Text areas */
+.stTextArea textarea {
+    background-color: #163020 !important;
+    color: #F2F7F3 !important;
+    border: 1px solid #244A33 !important;
+    border-radius: 10px !important;
+    -webkit-text-fill-color: #F2F7F3 !important;
+}
+
+/* Placeholder */
+.stTextArea textarea::placeholder {
+    color: #A8BBAE !important;
+    -webkit-text-fill-color: #A8BBAE !important;
+}
+
+/* Focus */
+.stTextArea textarea:focus {
+    border: 1px solid #34D375 !important;
+    box-shadow: 0 0 0 1px #34D375 !important;
+}
+
+/* Select boxes */
+[data-baseweb="select"] > div {
+    background-color: #163020 !important;
+    border: 1px solid #244A33 !important;
+    color: #F2F7F3 !important;
+    border-radius: 10px !important;
+}
+
+/* Selected text */
+[data-baseweb="select"] span {
+    color: #F2F7F3 !important;
+}
+
+/* Dropdown menu */
+[data-baseweb="popover"] {
+    background-color: #163020 !important;
+}
+
+[data-baseweb="menu"] {
+    background-color: #163020 !important;
+}
+
+/* Dropdown options */
+[role="option"] {
+    background-color: #163020 !important;
+    color: #F2F7F3 !important;
+}
+
+[role="option"]:hover {
+    background-color: #244A33 !important;
+}
+
+/* SIDEBAR DESIGN */
+[data-testid="stSidebar"] {
+    background: #102418 !important;
+    border-right: 1px solid #244A33;
+}
+
+[data-testid="stSidebar"] > div:first-child {
+    padding: 28px 16px;
+}
+
+/* Sidebar header */
+.sidebar-brand {
+    padding: 12px 10px 24px 10px;
+    border-bottom: 1px solid #244A33;
+    margin-bottom: 25px;
+}
+
+.sidebar-brand h2 {
+    color: #34D375;
+    font-size: 21px;
+    margin: 0;
+    letter-spacing: 1px;
+}
+
+.sidebar-brand p {
+    color: #8DAA96;
+    font-size: 10px;
+    letter-spacing: 2px;
+    margin: 5px 0 0 0;
+}
+
+/* Navigation title */
+.sidebar-label {
+    color: #789582;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    padding: 0 10px;
+    margin-bottom: 12px;
+}
+
+/* Navigation items */
+[data-testid="stSidebar"] div[role="radiogroup"] {
+    gap: 7px;
+}
+
+[data-testid="stSidebar"] div[role="radiogroup"] label {
+    background: transparent;
+    border-radius: 10px;
+    padding: 11px 13px;
+    transition: 0.2s;
+    border: 1px solid transparent;
+}
+
+[data-testid="stSidebar"] div[role="radiogroup"] label:hover {
+    background: #163020;
+    border-color: #244A33;
+}
+
+/* Selected navigation item */
+[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
+    background: #163020;
+    border: 1px solid #34D375;
+}
+
+[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) p {
+    color: #34D375 !important;
+    font-weight: 700;
+}
+
+/* Radio accent */
+[data-testid="stSidebar"] input[type="radio"] {
+    accent-color: #34D375;
+}
+
+/* Hide navigation label */
+[data-testid="stSidebar"] div[data-testid="stWidgetLabel"] {
+    display: none;
+}
+
+/* FILE UPLOADER */
+[data-testid="stFileUploader"] section {
+    background-color: #163020 !important;
+    border: 1px dashed #34D375 !important;
+    border-radius: 12px !important;
+}
+
+[data-testid="stFileUploader"] section > div {
+    background-color: transparent !important;
+}
+
+[data-testid="stFileUploader"] button {
+    background-color: #34D375 !important;
+    color: #0B1911 !important;
+    border: none !important;
+}
+
+[data-testid="stFileUploader"] small,
+[data-testid="stFileUploader"] span,
+[data-testid="stFileUploader"] label {
+    color: #DCE9DF !important;
+}
+
+[data-testid="stFileUploader"] section:hover {
+    border-color: #34D375 !important;
+    background-color: #1B3A27 !important;
+}
+
+/* ALL SELECTBOXES */
+[data-baseweb="select"] > div {
+    background-color: #163020 !important;
+    border: 1px solid #244A33 !important;
+}
+
+[data-baseweb="select"] input {
+    color: #F2F7F3 !important;
+}
+
+[data-baseweb="select"] svg {
+    fill: #34D375 !important;
+}
+
+[data-baseweb="popover"],
+[data-baseweb="menu"] {
+    background-color: #163020 !important;
+}
+
+[role="option"] {
+    background-color: #163020 !important;
+    color: #F2F7F3 !important;
+}
+
+[role="option"]:hover,
+[aria-selected="true"] {
+    background-color: #244A33 !important;
+    color: #34D375 !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
 
-st.sidebar.title("NUTRIMIND AI")
 
+# SIDEBAR BRAND
+st.sidebar.markdown("""
+<div class="sidebar-brand">
+    <h2>NUTRIMIND AI</h2>
+    <p>FOOD INTELLIGENCE</p>
+</div>
+
+<div class="sidebar-label">
+    WORKSPACE
+</div>
+""", unsafe_allow_html=True)
+
+
+# NAVIGATION
 page = st.sidebar.radio(
     "Navigation",
     [
@@ -50,8 +324,33 @@ page = st.sidebar.radio(
         "FreshCheck",
         "FoodChat",
         "MealPlanner"
-    ]
+    ],
+    label_visibility="collapsed"
 )
+
+# SIDEBAR FOOTER
+st.sidebar.markdown("""
+<div style="
+    position: relative;
+    margin-top: 45px;
+    padding: 16px 10px;
+    border-top: 1px solid #244A33;
+">
+    <p style="
+        color:#34D375;
+        font-size:12px;
+        font-weight:600;
+        margin:0;
+    ">NUTRIMIND AI</p>
+
+<p style="
+    color:#789582;
+    font-size:10px;
+    margin-top:5px;
+">Smart Food. Smarter Choices.</p>
+</div>
+""", unsafe_allow_html=True)
+
 
 
 if page == "Home":
@@ -133,14 +432,15 @@ if page == "Home":
 
     st.divider()
 
-    st.markdown("""
-    <div style="text-align:center; padding:20px;">
-        <h3 style="color:#a8d5b2;">Eat Smart. Live Smart.</h3>
-        <p style="color:#999;">
-            NUTRIMIND AI — Making food intelligence accessible to everyone.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+    # st.markdown("""
+    # <div style="text-align:center; padding:20px;">
+    #     <h3 style="color:#a8d5b2;">Eat Smart. Live Smart.</h3>
+    #     <p style="color:#999;">
+    #         NUTRIMIND AI — Making food intelligence accessible to everyone.
+    #     </p>
+    # </div>
+    # """, unsafe_allow_html=True)
+
 
 
 elif page == "FoodVision":
@@ -151,22 +451,25 @@ elif page == "FoodVision":
 
     st.subheader("Discover what's on your plate")
 
-upload_tab, camera_tab = st.tabs(["Upload Image", "Take Photo"])
+    upload_tab, camera_tab = st.tabs(["Upload Image", "Take Photo"])
 
-with upload_tab:
-    uploaded_image = st.file_uploader(
-        "Upload a food image",
-        type=["jpg", "jpeg", "png"],
-        key="foodvision_file_upload"
-    )
+    with upload_tab:
+        uploaded_image = st.file_uploader(
+            "Upload a food image",
+            type=["jpg", "jpeg", "png"],
+            key="foodvision_file_upload"
+        )
 
-with camera_tab:
-    camera_image = st.camera_input("Take a food photo")
+    with camera_tab:
+        camera_image = st.camera_input(
+            "Take a food photo",
+            key="foodvision_camera"
+        )
 
-if camera_image:
-    uploaded_image = camera_image
+    if camera_image is not None:
+        uploaded_image = camera_image
 
-    if uploaded_image:
+    if uploaded_image is not None:
 
         st.image(
             uploaded_image,
@@ -180,6 +483,7 @@ if camera_image:
 
                 try:
                     image_bytes = uploaded_image.getvalue()
+
                     base64_image = base64.b64encode(
                         image_bytes
                     ).decode("utf-8")
@@ -234,7 +538,6 @@ if camera_image:
                     )
 
                     result = response.choices[0].message.content
-
                     st.session_state.foodvision_result = result
 
                 except Exception as e:
@@ -244,6 +547,7 @@ if camera_image:
         st.divider()
         st.subheader("FoodVision Analysis")
         st.markdown(st.session_state.foodvision_result)
+
 
 elif page == "RecipeMentor":
 
@@ -413,6 +717,7 @@ elif page == "NutriScan":
         st.markdown(st.session_state.nutrition_result)
 
 
+
 elif page == "FreshCheck":
 
     st.title("FreshCheck")
@@ -421,24 +726,25 @@ elif page == "FreshCheck":
 
     st.subheader("Check your food")
 
-upload_tab, camera_tab = st.tabs(["Upload Image", "Take Photo"])
+    upload_tab, camera_tab = st.tabs(["Upload Image", "Take Photo"])
 
-with upload_tab:
-    uploaded_image = st.file_uploader(
-        "Upload a food image",
-        type=["jpg", "jpeg", "png"],
-        key="freshcheck_upload"
-    )
+    with upload_tab:
+        uploaded_image = st.file_uploader(
+            "Upload a food image",
+            type=["jpg", "jpeg", "png"],
+            key="freshcheck_upload"
+        )
 
-camera_image = st.camera_input(
-    "Take a food photo",
-    key="freshcheck_camera"
-)
+    with camera_tab:
+        camera_image = st.camera_input(
+            "Take a food photo",
+            key="freshcheck_camera"
+        )
 
-if camera_image:
-    uploaded_image = camera_image
+    if camera_image is not None:
+        uploaded_image = camera_image
 
-    if uploaded_image:
+    if uploaded_image is not None:
 
         st.image(
             uploaded_image,
@@ -451,8 +757,6 @@ if camera_image:
             with st.spinner("FreshCheck is analyzing your food..."):
 
                 try:
-                    import base64
-
                     image_bytes = uploaded_image.getvalue()
 
                     base64_image = base64.b64encode(
@@ -518,7 +822,6 @@ if camera_image:
                     )
 
                     result = response.choices[0].message.content
-
                     st.session_state.fresh_result = result
 
                 except Exception as e:
@@ -534,26 +837,38 @@ elif page == "FoodChat":
 
     st.title("NUTRIMIND AI")
     st.caption("Your intelligent food assistant")
+
     st.markdown("""
-    <style>
-    [data-testid="stChatMessage"] {
-        background-color: #111111;
-        border: 1px solid #292929;
-        border-radius: 15px;
-        padding: 15px;
-        margin-bottom: 12px;
-    }
+<style>
+/* Chat messages */
+[data-testid="stChatMessage"] {
+    background-color: #163020 !important;
+    border: 1px solid #244A33 !important;
+    border-radius: 14px !important;
+    padding: 16px !important;
+    margin-bottom: 12px;
+}
 
-    [data-testid="stChatInput"] {
-        border: 1px solid #444444;
-        border-radius: 15px;
-    }
+/* Chat input container */
+[data-testid="stChatInput"] {
+    background-color: #163020 !important;
+    border: 1px solid #244A33 !important;
+    border-radius: 14px !important;
+}
 
-    [data-testid="stChatInput"] textarea {
-        color: white !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+/* Chat input text */
+[data-testid="stChatInput"] textarea {
+    background-color: #163020 !important;
+    color: #F2F7F3 !important;
+    -webkit-text-fill-color: #F2F7F3 !important;
+}
+
+/* Chat placeholder */
+[data-testid="stChatInput"] textarea::placeholder {
+    color: #A8BBAE !important;
+}
+</style>
+""", unsafe_allow_html=True)
     st.divider()
 
     if "food_chat_history" not in st.session_state:
@@ -709,3 +1024,18 @@ IMPORTANT:
         st.divider()
         st.subheader("Your AI Meal Plan")
         st.markdown(st.session_state.meal_plan)
+
+
+# # GLOBAL FOOTER
+# st.markdown("""
+# <div class="nutri-footer">
+#     <h4>NUTRIMIND AI</h4>
+#     <p>Smart Food. Smarter Choices.</p>
+#     <p style="margin-top:10px;">
+#         AI-powered food intelligence
+#     </p>
+#     <p style="margin-top:10px;">
+#         © 2026 NUTRIMIND AI. All rights reserved.
+#     </p>
+# </div>
+# """, unsafe_allow_html=True)
