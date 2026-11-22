@@ -6,11 +6,20 @@ import hashlib
 import secrets
 import hmac
 from pathlib import Path
+from datetime import date, datetime, time as dt_time
+import calendar as pycalendar
+
+st.set_page_config(
+    page_title="NUTRIMIND AI",
+    page_icon="🥗",
+    layout="wide"
+)
 
 if "theme" not in st.session_state:
     st.session_state["theme"] = "Dark Mode"
 
-
+if "recipe_result" not in st.session_state:
+    st.session_state.recipe_result = None
 
 if not st.session_state.get("logged_in", False):
     st.markdown("""
@@ -479,6 +488,24 @@ h1, h2, h3 {
         transition-duration: 0.01ms !important;
     }
 }
+/* MULTISELECT - DARK MODE */
+.stMultiSelect [data-baseweb="select"] > div {
+    background-color: #163020 !important;
+    border: 1px solid #244A33 !important;
+}
+
+.stMultiSelect [data-baseweb="tag"] {
+    background-color: #244A33 !important;
+}
+
+.stMultiSelect [data-baseweb="tag"] span {
+    color: #F2F7F3 !important;
+}
+
+.stMultiSelect input {
+    color: #F2F7F3 !important;
+    -webkit-text-fill-color: #F2F7F3 !important;
+}
 
 </style>
 """, unsafe_allow_html=True)
@@ -519,6 +546,86 @@ def init_favourites_table():
 
     conn.commit()
     conn.close()
+
+# =====================================
+# MY CALENDAR - FOOD DIARY DATABASE
+# =====================================
+
+def init_food_diary_table():
+    conn = get_db_connection()
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS food_diary (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_email TEXT NOT NULL,
+            food_name TEXT NOT NULL,
+            meal_type TEXT NOT NULL,
+            food_date TEXT NOT NULL,
+            food_time TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    conn.commit()
+    conn.close()
+
+
+def add_food_entry(user_email, food_name, meal_type, food_date, food_time):
+    conn = get_db_connection()
+
+    conn.execute("""
+        INSERT INTO food_diary
+        (user_email, food_name, meal_type, food_date, food_time)
+        VALUES (?, ?, ?, ?, ?)
+    """, (user_email, food_name, meal_type, food_date, food_time))
+
+    conn.commit()
+    conn.close()
+
+
+def get_food_entries(user_email, selected_date):
+    conn = get_db_connection()
+
+    entries = conn.execute("""
+        SELECT id, food_name, meal_type, food_time
+        FROM food_diary
+        WHERE user_email = ? AND food_date = ?
+        ORDER BY food_time ASC
+    """, (user_email, selected_date)).fetchall()
+
+    conn.close()
+    return entries
+
+
+def delete_food_entry(entry_id, user_email):
+    conn = get_db_connection()
+
+    conn.execute("""
+        DELETE FROM food_diary
+        WHERE id = ? AND user_email = ?
+    """, (entry_id, user_email))
+
+    conn.commit()
+    conn.close()
+
+
+def get_month_food_counts(user_email, year, month):
+    conn = get_db_connection()
+
+    month_prefix = f"{year}-{month:02d}"
+
+    rows = conn.execute("""
+        SELECT food_date, COUNT(*)
+        FROM food_diary
+        WHERE user_email = ? AND food_date LIKE ?
+        GROUP BY food_date
+    """, (user_email, month_prefix + "%")).fetchall()
+
+    conn.close()
+    return dict(rows)
+
+
+init_food_diary_table()
 
 
 def save_favourite_recipe(user_email, recipe):
@@ -662,48 +769,6 @@ if not st.session_state.logged_in:
 
     </style>
     """, unsafe_allow_html=True)
-
-    # Light Mode for authentication
-    if st.session_state.theme == "Light Mode":
-        st.markdown("""
-        <style>
-        .stApp,
-        [data-testid="stAppViewContainer"],
-        [data-testid="stMain"] {
-            background-color: #F4F8F5 !important;
-            color: #183326 !important;
-        }
-
-        .auth-title h1 {
-            color: #26834D !important;
-        }
-
-        .auth-title p,
-        .auth-switch {
-            color: #526B5D !important;
-        }
-
-        [data-testid="stForm"] {
-            background: #FFFFFF !important;
-            border: 1px solid #D5E5DA !important;
-        }
-
-        .stTextInput input {
-            background: #F4F8F5 !important;
-            color: #183326 !important;
-            -webkit-text-fill-color: #183326 !important;
-            border-color: #C8DCCF !important;
-        }
-
-        .stTextInput input::placeholder {
-            color: #789582 !important;
-        }
-
-        .auth-switch a {
-            color: #26834D !important;
-        }
-        </style>
-        """, unsafe_allow_html=True)
 
     # Brand
     st.markdown("""
@@ -923,17 +988,6 @@ st.sidebar.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-st.sidebar.markdown("### Appearance")
-
-st.sidebar.radio(
-    "Choose theme",
-    ["Dark Mode", "Light Mode"],
-    key="theme",
-    label_visibility="collapsed"
-)
-
-st.sidebar.markdown("---")
-
 # NAVIGATION
 if "show_profile" not in st.session_state:
     st.session_state.show_profile = False
@@ -947,7 +1001,8 @@ selected_page = st.sidebar.radio(
         "🥗 NutriScan",
         "🍃 FreshCheck",
         "💬 FoodChat",
-        "📅 MealPlanner"
+        "📅 MealPlanner",
+        "🗓️ MyCalendar"
     ],
     label_visibility="collapsed"
 )
@@ -1009,18 +1064,11 @@ if page == "🏠 Home":
     st.title("NUTRIMIND AI")
     st.caption("Your intelligent food companion")
 
-    if st.session_state.theme == "Light Mode":
-        hero_bg = "linear-gradient(135deg, #D5E8D7, #EAF3E9, #C9DEC9)"
-        hero_title = "#294333"
-        hero_text = "#526B58"
-        hero_label = "#34794A"
-        hero_border = "#BDD5C0"
-    else:
-        hero_bg = "linear-gradient(135deg, #17251d, #101a16, #17202a)"
-        hero_title = "#FFFFFF"
-        hero_text = "#D0D8D2"
-        hero_label = "#9FCEA9"
-        hero_border = "#34483B"
+    hero_bg = "#102418"
+    hero_border = "#244A33"
+    hero_label = "#34D375"
+    hero_title = "#F2F7F3"
+    hero_text = "#DCE9DF"
 
     st.markdown(f"""
     <div style="
@@ -1043,6 +1091,7 @@ if page == "🏠 Home":
         </p>
     </div>
     """, unsafe_allow_html=True)
+    
 
     st.subheader("Your AI-powered food platform")
 
@@ -1098,14 +1147,18 @@ if page == "🏠 Home":
 
     st.divider()
 
-    # st.markdown("""
-    # <div style="text-align:center; padding:20px;">
-    #     <h3 style="color:#a8d5b2;">Eat Smart. Live Smart.</h3>
-    #     <p style="color:#999;">
-    #         NUTRIMIND AI — Making food intelligence accessible to everyone.
-    #     </p>
-    # </div>
-    # """, unsafe_allow_html=True)
+    st.markdown("""
+<div class="nutri-footer">
+    <h4>NUTRIMIND AI</h4>
+    <p>Smart Food. Smarter Choices.</p>
+    <p style="margin-top:10px;">
+        AI-powered food intelligence
+    </p>
+    <p style="margin-top:10px;">
+        © 2026 NUTRIMIND AI. All rights reserved.
+    </p>
+</div>
+""", unsafe_allow_html=True)
 
 
 
@@ -1229,9 +1282,10 @@ elif page == "👨‍🍳 RecipeMentor":
     )
 
     meal_type = st.selectbox(
-        "Choose meal type",
-        ["Any", "Breakfast", "Lunch", "Dinner", "Snack", "Dessert"]
-    )
+    "Meal type",
+    ["Breakfast", "Lunch", "Dinner", "Snack"],
+    key="recipe_mentor_meal_type"
+)
 
     difficulty = st.selectbox(
         "Cooking difficulty",
@@ -1294,47 +1348,27 @@ elif page == "👨‍🍳 RecipeMentor":
                 except Exception as e:
                     st.error(f"Could not generate recipe: {e}")
 
-    if "recipe_result" in st.session_state:
+
+    if st.session_state.recipe_result:
         st.divider()
         st.subheader("Your AI Recipe")
-
         st.markdown(st.session_state.recipe_result)
 
         user_email = st.session_state.get("user_email", "")
 
-        if st.button("♡ Save to Favourites", key="save_recipe"):
+        if st.button("🤍 Save to Favourites", key="recipe_mentor_save"):
             try:
                 save_favourite_recipe(
                     user_email,
                     st.session_state.recipe_result
                 )
-
                 st.success("Recipe saved to your favourites!")
-
             except Exception as e:
                 st.error(f"Could not save recipe: {e}")
 
-    st.subheader("Your AI Recipe")
-    st.markdown(st.session_state.recipe_result)
-
-    st.divider()
-
-    if st.button("♡ Save to Favourites", key="save_recipe"):
-        user_email = st.session_state.get("user_email")
-
-        if user_email:
-            save_favourite_recipe(
-                user_email,
-                st.session_state.recipe_result
-            )
-
-            st.success("Recipe saved to your favourites!")
-
-        else:
-            st.error("Please log in to save recipes.")
-
 
 elif page == "🥗 NutriScan":
+
 
     st.title("NutriScan")
     st.caption("Explore the nutritional information of your food.")
@@ -1754,42 +1788,238 @@ elif page == "👤 Profile":
         st.info("You haven't saved any recipes yet.")
         st.write("Go to RecipeMentor and save your favourite recipes!")
 
-if "recipe_result" in st.session_state:
-        st.divider()
 
-        st.subheader("Your AI Recipe")
-        st.markdown(st.session_state.recipe_result)
+elif page == "🗓️ MyCalendar":
 
-        st.divider()
+    user_email = st.session_state.user_email
 
-        if st.button("♡ Save to Favourites", key="save_recipe"):
-            user_email = st.session_state.get("user_email")
+    if "calendar_month" not in st.session_state:
+        st.session_state.calendar_month = date.today().replace(day=1)
 
-            if user_email:
-                save_favourite_recipe(
-                    user_email,
-                    st.session_state.recipe_result
+    if "calendar_selected_date" not in st.session_state:
+        st.session_state.calendar_selected_date = date.today().isoformat()
+
+    current_month = st.session_state.calendar_month
+    selected_date = st.session_state.calendar_selected_date
+
+    st.markdown("""
+        <h1 style="color:#34D375;">MyCalendar</h1>
+        <p style="color:#9EAEA3;">
+            Your personal food diary. Keep track of what you eat every day.
+        </p>
+    """, unsafe_allow_html=True)
+
+    st.divider()
+
+    # MONTH NAVIGATION
+    col1, col2, col3 = st.columns([1, 3, 1])
+
+    with col1:
+        if st.button("← Previous", use_container_width=True):
+            if current_month.month == 1:
+                st.session_state.calendar_month = date(
+                    current_month.year - 1, 12, 1
                 )
-
-                st.success("Recipe saved to your favourites!")
-
             else:
-                st.error("Please log in to save recipes.")
+                st.session_state.calendar_month = date(
+                    current_month.year, current_month.month - 1, 1
+                )
+            st.rerun()
 
+    with col2:
+        st.markdown(
+            f"<h3 style='text-align:center;'>{current_month.strftime('%B %Y')}</h3>",
+            unsafe_allow_html=True
+        )
 
-# # GLOBAL FOOTER
-# st.markdown("""
-# <div class="nutri-footer">
-#     <h4>NUTRIMIND AI</h4>
-#     <p>Smart Food. Smarter Choices.</p>
-#     <p style="margin-top:10px;">
-#         AI-powered food intelligence
-#     </p>
-#     <p style="margin-top:10px;">
-#         © 2026 NUTRIMIND AI. All rights reserved.
-#     </p>
-# </div>
-# """, unsafe_allow_html=True)
+    with col3:
+        if st.button("Next →", use_container_width=True):
+            if current_month.month == 12:
+                st.session_state.calendar_month = date(
+                    current_month.year + 1, 1, 1
+                )
+            else:
+                st.session_state.calendar_month = date(
+                    current_month.year, current_month.month + 1, 1
+                )
+            st.rerun()
+
+    if st.button("Today"):
+        st.session_state.calendar_month = date.today().replace(day=1)
+        st.session_state.calendar_selected_date = date.today().isoformat()
+        st.rerun()
+
+    # CALENDAR
+    food_counts = get_month_food_counts(
+        user_email,
+        current_month.year,
+        current_month.month
+    )
+
+    weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
+    weekday_cols = st.columns(7)
+
+    for i, weekday in enumerate(weekdays):
+        weekday_cols[i].markdown(
+            f"<p style='text-align:center;color:#34D375;font-weight:600;'>{weekday}</p>",
+            unsafe_allow_html=True
+        )
+
+    weeks = pycalendar.monthcalendar(
+        current_month.year,
+        current_month.month
+    )
+
+    for week in weeks:
+        cols = st.columns(7)
+
+        for i, day in enumerate(week):
+            with cols[i]:
+
+                if day == 0:
+                    st.write("")
+                    continue
+
+                date_string = date(
+                    current_month.year,
+                    current_month.month,
+                    day
+                ).isoformat()
+
+                has_food = date_string in food_counts
+                is_selected = date_string == selected_date
+
+                marker = " •" if has_food else ""
+                label = f"● {day}{marker}" if is_selected else f"{day}{marker}"
+
+                if st.button(
+                    label,
+                    key=f"calendar_day_{date_string}",
+                    use_container_width=True,
+                    type="primary" if is_selected else "secondary"
+                ):
+                    st.session_state.calendar_selected_date = date_string
+                    st.rerun()
+
+    st.caption("• Days with a dot contain saved food entries.")
+
+    st.divider()
+
+    # SELECTED DATE
+    selected_date_obj = date.fromisoformat(selected_date)
+
+    st.markdown(
+        f"### Food Diary — {selected_date_obj.strftime('%d %B %Y')}"
+    )
+
+    # ADD FOOD FORM
+    with st.container(border=True):
+
+        st.markdown("#### + Add Food")
+
+        with st.form("mycalendar_add_food", clear_on_submit=True):
+
+            food_name = st.text_input(
+                "What did you eat?",
+                placeholder="e.g. Chicken salad"
+            )
+
+            meal_type = st.selectbox(
+    "Meal type",
+    ["Breakfast", "Lunch", "Dinner", "Snack"],
+    key="mycalendar_meal_type"
+)
+
+            food_time = st.time_input(
+                "Time",
+                value=dt_time(12, 0)
+            )
+
+            submitted = st.form_submit_button(
+                "Save Food",
+                use_container_width=True,
+                type="primary"
+            )
+
+            if submitted:
+
+                if food_name.strip():
+
+                    add_food_entry(
+                        user_email,
+                        food_name.strip(),
+                        meal_type,
+                        selected_date,
+                        food_time.strftime("%H:%M")
+                    )
+
+                    st.success("Food saved successfully!")
+                    st.rerun()
+
+                else:
+                    st.warning("Please enter the food name.")
+
+    
+    # DAILY FOOD ENTRIES
+    st.markdown("#### What You Ate")
+
+    entries = get_food_entries(user_email, selected_date)
+
+    if entries:
+
+        meal_order = ["Breakfast", "Lunch", "Dinner", "Snack"]
+
+        for meal in meal_order:
+
+            meal_entries = [
+                entry for entry in entries
+                if entry[2] == meal
+            ]
+
+            if meal_entries:
+
+                st.markdown(f"**{meal}**")
+
+                for entry in meal_entries:
+
+                    entry_id, food_name, meal_type, food_time = entry
+
+                    col1, col2 = st.columns([5, 1])
+
+                    with col1:
+                        st.markdown(
+                            f"""
+                            <div style="
+                                background:#163020;
+                                padding:13px 16px;
+                                border-radius:12px;
+                                margin-bottom:8px;
+                                border:1px solid #244A33;
+                            ">
+                                <span style="color:#F2F7F3;font-weight:600;">
+                                    {food_name}
+                                </span>
+                                <br>
+                                <span style="color:#9EAEA3;font-size:13px;">
+                                    {food_time}
+                                </span>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+
+                    with col2:
+                        if st.button(
+                            "Delete",
+                            key=f"delete_food_{entry_id}"
+                        ):
+                            delete_food_entry(entry_id, user_email)
+                            st.rerun()
+
+    else:
+        st.info("No food entries for this day yet. Add your first meal above!")
+
 
 
 
@@ -2024,6 +2254,188 @@ if st.session_state.get("theme") == "Light Mode":
     [data-testid="stSlider"] {
         color: #34794A !important;
     }
+    
+/* FIX: ALL LIGHT MODE INTERACTIVE ELEMENTS */
 
-    </style>
-    """, unsafe_allow_html=True)
+/* FOODVISION & FRESHCHECK - UPLOAD HOVER */
+[data-testid="stFileUploader"] section:hover,
+[data-testid="stFileUploader"] section:hover > div {
+    background: #C9E1CC !important;
+    border-color: #83B38C !important;
+}
+
+/* RECIPEMENTOR & MEALPLANNER - SELECT INPUTS */
+[data-baseweb="select"],
+[data-baseweb="select"] > div,
+[data-baseweb="select"] > div > div {
+    background-color: #D8E9D9 !important;
+    color: #294333 !important;
+    border-color: #B5D0B9 !important;
+}
+
+/* SELECT PLACEHOLDER AND SELECTED VALUE */
+[data-baseweb="select"] input,
+[data-baseweb="select"] div,
+[data-baseweb="select"] span {
+    color: #294333 !important;
+    -webkit-text-fill-color: #294333 !important;
+}
+
+/* SELECT DROPDOWN */
+[data-baseweb="popover"],
+[data-baseweb="popover"] > div,
+[data-baseweb="menu"],
+[role="listbox"],
+[role="option"] {
+    background-color: #D8E9D9 !important;
+    color: #294333 !important;
+}
+
+/* DROPDOWN HOVER */
+[role="option"]:hover,
+[role="option"][aria-selected="true"] {
+    background-color: #BBD9BF !important;
+    color: #23442D !important;
+}
+
+/* FOODCHAT - PROMPT INPUT */
+[data-testid="stChatInput"],
+[data-testid="stChatInput"] > div,
+[data-testid="stChatInput"] textarea,
+[data-testid="stChatInput"] [contenteditable="true"] {
+    background-color: #D8E9D9 !important;
+    color: #294333 !important;
+    -webkit-text-fill-color: #294333 !important;
+    border-color: #B5D0B9 !important;
+}
+
+/* FOODCHAT - PROMPT PLACEHOLDER */
+[data-testid="stChatInput"] textarea::placeholder {
+    color: #718D76 !important;
+    -webkit-text-fill-color: #718D76 !important;
+}
+
+/* FOCUS EFFECT */
+[data-testid="stChatInput"]:focus-within,
+[data-baseweb="select"]:focus-within {
+    border-color: #83B38C !important;
+    box-shadow: 0 0 0 2px #83B38C25 !important;
+}
+/* MEALPLANNER - CALENDAR LIGHT MODE */
+
+/* Calendar container */
+[data-testid="stDateInput"],
+[data-testid="stDateInput"] > div,
+[data-testid="stDateInput"] input {
+    background-color: #D8E9D9 !important;
+    color: #294333 !important;
+    border-color: #B5D0B9 !important;
+    -webkit-text-fill-color: #294333 !important;
+}
+
+/* Calendar popup */
+[data-baseweb="calendar"],
+[data-baseweb="calendar"] *,
+[data-baseweb="popover"] [role="dialog"] {
+    background-color: #E7F1E7 !important;
+    color: #294333 !important;
+}
+
+/* Calendar days */
+[data-baseweb="calendar"] button {
+    color: #294333 !important;
+    background-color: transparent !important;
+}
+
+/* Hover on calendar days */
+[data-baseweb="calendar"] button:hover {
+    background-color: #BBD9BF !important;
+    color: #23442D !important;
+}
+
+/* Selected day */
+[data-baseweb="calendar"] button[aria-selected="true"] {
+    background-color: #83B38C !important;
+    color: #FFFFFF !important;
+}
+
+/* Calendar navigation arrows */
+[data-baseweb="calendar"] svg {
+    fill: #294333 !important;
+    color: #294333 !important;
+}
+/* SELECTBOX - LIGHT MODE */
+div[data-testid="stSelectbox"] [data-baseweb="select"] > div {
+    background-color: #D8E9D9 !important;
+    border: 1px solid #B5D0B9 !important;
+}
+
+div[data-testid="stSelectbox"] [data-baseweb="select"] span {
+    color: #294333 !important;
+    -webkit-text-fill-color: #294333 !important;
+}
+
+div[data-testid="stSelectbox"] [data-baseweb="select"] input {
+    color: #294333 !important;
+    -webkit-text-fill-color: #294333 !important;
+}
+/* FIX SELECTBOX BACKGROUND - LIGHT MODE */
+div[data-testid="stSelectbox"] div[data-baseweb="select"] {
+    background: #D8E9D9 !important;
+    background-color: #D8E9D9 !important;
+}
+
+div[data-testid="stSelectbox"] div[data-baseweb="select"] > div {
+    background: #D8E9D9 !important;
+    background-color: #D8E9D9 !important;
+}
+
+div[data-testid="stSelectbox"] [data-baseweb="select"] * {
+    color: #294333 !important;
+    -webkit-text-fill-color: #294333 !important;
+}
+/* MYCALENDAR SELECTBOX - LIGHT MODE */
+div.st-key-mycalendar_meal_type [data-baseweb="select"] {
+    background-color: #D8E9D9 !important;
+}
+
+div.st-key-mycalendar_meal_type [data-baseweb="select"] > div {
+    background-color: #D8E9D9 !important;
+    border: 1px solid #B5D0B9 !important;
+}
+
+div.st-key-mycalendar_meal_type [data-baseweb="select"] * {
+    background-color: transparent !important;
+    color: #294333 !important;
+    -webkit-text-fill-color: #294333 !important;
+}
+
+div.st-key-mycalendar_meal_type svg {
+    fill: #34794A !important;
+}
+/* SIDEBAR - HOVER */
+section[data-testid="stSidebar"] [data-testid="stRadio"] label:hover {
+    background-color: #D8E9D9 !important;
+    color: #294333 !important;
+}
+
+/* SIDEBAR - SELECTED */
+section[data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) {
+    background-color: #C5DEC8 !important;
+    color: #294333 !important;
+    border-radius: 10px !important;
+}
+
+/* SIDEBAR - TEXT */
+section[data-testid="stSidebar"] [data-testid="stRadio"] label,
+section[data-testid="stSidebar"] [data-testid="stRadio"] label p {
+    color: #294333 !important;
+}
+
+/* REMOVE DARK HOVER EFFECT */
+section[data-testid="stSidebar"] [data-testid="stRadio"] label:hover p {
+    color: #294333 !important;
+}
+
+</style>
+""", unsafe_allow_html=True)
