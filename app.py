@@ -1,4 +1,3 @@
-
 import streamlit as st
 from groq import Groq
 import base64
@@ -6,6 +5,11 @@ import sqlite3
 import hashlib
 import secrets
 import hmac
+from pathlib import Path
+
+if "theme" not in st.session_state:
+    st.session_state["theme"] = "Dark Mode"
+
 
 
 if not st.session_state.get("logged_in", False):
@@ -480,13 +484,13 @@ h1, h2, h3 {
 """, unsafe_allow_html=True)
 
 
-
 # =====================================
 # NUTRIMIND AI - LOGIN & SIGN UP SYSTEM
 # =====================================
 
 def get_db_connection():
-    conn = sqlite3.connect("nutrimind_users.db")
+    db_path = Path(__file__).resolve().parent / "nutrimind_users.db"
+    conn = sqlite3.connect(db_path)
 
     conn.execute("""
         CREATE TABLE IF NOT EXISTS users (
@@ -499,6 +503,46 @@ def get_db_connection():
     """)
 
     return conn
+
+def init_favourites_table():
+    conn = get_db_connection()
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS favourite_recipes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_email TEXT NOT NULL,
+            recipe_name TEXT NOT NULL,
+            recipe_content TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    conn.commit()
+    conn.close()
+
+
+def save_favourite_recipe(user_email, recipe):
+    recipe_name = recipe.strip().split("\n")[0][:100]
+
+    conn = get_db_connection()
+
+    existing = conn.execute("""
+        SELECT id FROM favourite_recipes
+        WHERE user_email = ? AND recipe_content = ?
+    """, (user_email, recipe)).fetchone()
+
+    if not existing:
+        conn.execute("""
+            INSERT INTO favourite_recipes
+            (user_email, recipe_name, recipe_content)
+            VALUES (?, ?, ?)
+        """, (user_email, recipe_name, recipe))
+
+    conn.commit()
+    conn.close()
+
+
+init_favourites_table()
 
 
 def hash_password(password, salt):
@@ -524,38 +568,166 @@ if "auth_page" not in st.session_state:
     st.session_state.auth_page = "login"
 
 
+# Handle Login / Sign Up navigation
+requested_auth_page = st.query_params.get("auth")
+
+if requested_auth_page in ("login", "signup"):
+    st.session_state.auth_page = requested_auth_page
+
+
+# =====================================
 # AUTHENTICATION SCREEN
+# =====================================
+
 if not st.session_state.logged_in:
 
+    # Hide sidebar
     st.markdown("""
     <style>
     [data-testid="stSidebar"] {
         display: none !important;
     }
+
+    .auth-container {
+        max-width: 460px;
+        margin: auto;
+    }
+
+    .auth-title {
+        text-align: center;
+        padding: 35px 0 20px 0;
+    }
+
+    .auth-title h1 {
+        color: #34D375 !important;
+        font-size: 40px;
+        font-weight: 800;
+        margin-bottom: 5px;
+    }
+
+    .auth-title p {
+        color: #A8BBAE !important;
+        letter-spacing: 2px;
+        font-size: 12px;
+    }
+
+    [data-testid="stForm"] {
+        background: #102418;
+        border: 1px solid #244A33;
+        border-radius: 16px;
+        padding: 25px;
+    }
+
+    .stTextInput input {
+        background-color: #163020 !important;
+        color: #F2F7F3 !important;
+        border: 1px solid #244A33 !important;
+        border-radius: 9px !important;
+    }
+
+    .stTextInput input:focus {
+        border-color: #34D375 !important;
+        box-shadow: 0 0 0 1px #34D375 !important;
+    }
+
+    .stTextInput input::placeholder {
+        color: #8DAA96 !important;
+    }
+
+    [data-testid="stFormSubmitButton"] button {
+        background: #34D375 !important;
+        color: #0B1911 !important;
+        border: none !important;
+        border-radius: 9px !important;
+        font-weight: 700 !important;
+        min-height: 44px;
+    }
+
+    .auth-switch {
+        text-align: center;
+        color: #A8BBAE;
+        margin-top: 22px;
+        font-size: 14px;
+    }
+
+    .auth-switch a {
+        color: #34D375 !important;
+        font-weight: 700;
+        text-decoration: none;
+    }
+
+    .auth-switch a:hover {
+        text-decoration: underline;
+    }
+
     </style>
     """, unsafe_allow_html=True)
 
+    # Light Mode for authentication
+    if st.session_state.theme == "Light Mode":
+        st.markdown("""
+        <style>
+        .stApp,
+        [data-testid="stAppViewContainer"],
+        [data-testid="stMain"] {
+            background-color: #F4F8F5 !important;
+            color: #183326 !important;
+        }
+
+        .auth-title h1 {
+            color: #26834D !important;
+        }
+
+        .auth-title p,
+        .auth-switch {
+            color: #526B5D !important;
+        }
+
+        [data-testid="stForm"] {
+            background: #FFFFFF !important;
+            border: 1px solid #D5E5DA !important;
+        }
+
+        .stTextInput input {
+            background: #F4F8F5 !important;
+            color: #183326 !important;
+            -webkit-text-fill-color: #183326 !important;
+            border-color: #C8DCCF !important;
+        }
+
+        .stTextInput input::placeholder {
+            color: #789582 !important;
+        }
+
+        .auth-switch a {
+            color: #26834D !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
+    # Brand
     st.markdown("""
-    <div style="text-align:center; padding:35px 0 15px 0;">
-        <h1 style="color:#34D375; font-size:42px;">
-            NUTRIMIND AI
-        </h1>
-        <p style="color:#A8BBAE; letter-spacing:2px;">
-            SMART FOOD. SMARTER CHOICES.
-        </p>
-        <p style="color:#DCE9DF; font-size:17px;">
-            Your intelligent food companion starts here.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+<div style="text-align:center; padding: 25px 10px;">
+    <h1 style="color:#237A45; font-size:42px;">
+        🥗 NUTRIMIND AI
+    </h1>
+    <h3 style="color:#176535; letter-spacing:3px;">
+        SMART FOOD. SMARTER CHOICES.
+    </h3>
+    <p style="color:#315E40; font-size:17px;">
+        Your intelligent food companion starts here.
+    </p>
+</div>
+""", unsafe_allow_html=True)
 
     left, center, right = st.columns([1, 1.3, 1])
 
     with center:
 
-        # =========================
-        # LOGIN PAGE
-        # =========================
+        # =====================================
+        # LOGIN
+        # =====================================
+
         if st.session_state.auth_page == "login":
 
             st.subheader("Welcome Back")
@@ -605,30 +777,31 @@ if not st.session_state.logged_in:
                         )
 
                         if hmac.compare_digest(entered_hash, user[3]):
+
                             st.session_state.logged_in = True
                             st.session_state.user_name = user[1]
                             st.session_state.user_email = user[2]
+
+                            st.query_params.clear()
                             st.rerun()
+
                         else:
                             st.error("Incorrect email or password.")
+
                     else:
                         st.error("Incorrect email or password.")
 
             st.markdown("""
-<p style="color:#A8BBAE; text-align:center;">
-    Don't have an account?
-    <a href="?auth=signup"
-       target="_self"
-       style="color:#34D375; text-decoration:none; font-weight:600;">
-       Sign Up
-    </a>
-</p>
-""", unsafe_allow_html=True)
-            st.rerun()
+            <div class="auth-switch">
+                Don't have an account?
+                <a href="?auth=signup" target="_self">Sign Up</a>
+            </div>
+            """, unsafe_allow_html=True)
 
-        # =========================
-        # SIGN UP PAGE
-        # =========================
+        # =====================================
+        # SIGN UP
+        # =====================================
+
         else:
 
             st.subheader("Create Your Account")
@@ -714,6 +887,7 @@ if not st.session_state.logged_in:
                         st.session_state.user_email = signup_email.strip().lower()
 
                         st.success("Account created successfully!")
+                        st.query_params.clear()
                         st.rerun()
 
                     except sqlite3.IntegrityError:
@@ -722,19 +896,13 @@ if not st.session_state.logged_in:
                     finally:
                         conn.close()
 
-                st.markdown("""
-<p style="color:#A8BBAE; text-align:center;">
-    Already have an account?
-    <a href="?auth=login"
-       target="_self"
-       style="color:#34D375; text-decoration:none; font-weight:600;">
-       Log In
-    </a>
-</p>
-""", unsafe_allow_html=True)
-                st.rerun()
+            st.markdown("""
+            <div class="auth-switch">
+                Already have an account?
+                <a href="?auth=login" target="_self">Log In</a>
+            </div>
+            """, unsafe_allow_html=True)
 
-    # STOP ONLY WHEN USER IS NOT LOGGED IN
     st.stop()
 
 
@@ -755,21 +923,45 @@ st.sidebar.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+st.sidebar.markdown("### Appearance")
+
+st.sidebar.radio(
+    "Choose theme",
+    ["Dark Mode", "Light Mode"],
+    key="theme",
+    label_visibility="collapsed"
+)
+
+st.sidebar.markdown("---")
 
 # NAVIGATION
-page = st.sidebar.radio(
+if "show_profile" not in st.session_state:
+    st.session_state.show_profile = False
+
+selected_page = st.sidebar.radio(
     "Navigation",
     [
-    "🏠 Home",
-    "🍽️ FoodVision",
-    "👨‍🍳 RecipeMentor",
-    "🥗 NutriScan",
-    "🍃 FreshCheck",
-    "💬 FoodChat",
-    "📅 MealPlanner"
+        "🏠 Home",
+        "🍽️ FoodVision",
+        "👨‍🍳 RecipeMentor",
+        "🥗 NutriScan",
+        "🍃 FreshCheck",
+        "💬 FoodChat",
+        "📅 MealPlanner"
     ],
     label_visibility="collapsed"
 )
+
+page = "👤 Profile" if st.session_state.show_profile else selected_page
+
+# TOP RIGHT PROFILE ICON
+
+header_left, header_right = st.columns([12, 1])
+
+with header_right:
+    if st.button("👤", key="profile_icon", help="Open Profile"):
+        st.session_state.show_profile = True
+        st.rerun()
 
 # SIDEBAR FOOTER
 st.sidebar.markdown("""
@@ -817,22 +1009,35 @@ if page == "🏠 Home":
     st.title("NUTRIMIND AI")
     st.caption("Your intelligent food companion")
 
-    st.markdown("""
+    if st.session_state.theme == "Light Mode":
+        hero_bg = "linear-gradient(135deg, #D5E8D7, #EAF3E9, #C9DEC9)"
+        hero_title = "#294333"
+        hero_text = "#526B58"
+        hero_label = "#34794A"
+        hero_border = "#BDD5C0"
+    else:
+        hero_bg = "linear-gradient(135deg, #17251d, #101a16, #17202a)"
+        hero_title = "#FFFFFF"
+        hero_text = "#D0D8D2"
+        hero_label = "#9FCEA9"
+        hero_border = "#34483B"
+
+    st.markdown(f"""
     <div style="
-        background: linear-gradient(135deg, #17251d, #101a16, #17202a);
+        background: {hero_bg};
         padding: 38px;
         border-radius: 18px;
-        border: 1px solid #34483b;
+        border: 1px solid {hero_border};
         margin: 15px 0 25px 0;
         animation: heroGlow 4s ease-in-out infinite;
     ">
-        <p style="color:#9fcea9; font-size:14px; letter-spacing:2px;">
+        <p style="color:{hero_label}; font-size:14px; letter-spacing:2px;">
             THE FUTURE OF SMART NUTRITION
         </p>
-        <h1 style="color:white; font-size:38px; margin-bottom:12px;">
+        <h1 style="color:{hero_title}; font-size:38px; margin-bottom:12px;">
             Smart Food.<br>Smarter Choices.
         </h1>
-        <p style="color:#d0d8d2; font-size:17px;">
+        <p style="color:{hero_text}; font-size:17px;">
             Discover what's on your plate, explore new recipes
             and make smarter food choices with AI.
         </p>
@@ -1092,7 +1297,41 @@ elif page == "👨‍🍳 RecipeMentor":
     if "recipe_result" in st.session_state:
         st.divider()
         st.subheader("Your AI Recipe")
+
         st.markdown(st.session_state.recipe_result)
+
+        user_email = st.session_state.get("user_email", "")
+
+        if st.button("♡ Save to Favourites", key="save_recipe"):
+            try:
+                save_favourite_recipe(
+                    user_email,
+                    st.session_state.recipe_result
+                )
+
+                st.success("Recipe saved to your favourites!")
+
+            except Exception as e:
+                st.error(f"Could not save recipe: {e}")
+
+    st.subheader("Your AI Recipe")
+    st.markdown(st.session_state.recipe_result)
+
+    st.divider()
+
+    if st.button("♡ Save to Favourites", key="save_recipe"):
+        user_email = st.session_state.get("user_email")
+
+        if user_email:
+            save_favourite_recipe(
+                user_email,
+                st.session_state.recipe_result
+            )
+
+            st.success("Recipe saved to your favourites!")
+
+        else:
+            st.error("Please log in to save recipes.")
 
 
 elif page == "🥗 NutriScan":
@@ -1300,37 +1539,6 @@ elif page == "💬 FoodChat":
     st.title("🥗NUTRIMIND AI")
     st.caption("Your intelligent food assistant")
 
-    st.markdown("""
-<style>
-/* Chat messages */
-[data-testid="stChatMessage"] {
-    background-color: #163020 !important;
-    border: 1px solid #244A33 !important;
-    border-radius: 14px !important;
-    padding: 16px !important;
-    margin-bottom: 12px;
-}
-
-/* Chat input container */
-[data-testid="stChatInput"] {
-    background-color: #163020 !important;
-    border: 1px solid #244A33 !important;
-    border-radius: 14px !important;
-}
-
-/* Chat input text */
-[data-testid="stChatInput"] textarea {
-    background-color: #163020 !important;
-    color: #F2F7F3 !important;
-    -webkit-text-fill-color: #F2F7F3 !important;
-}
-
-/* Chat placeholder */
-[data-testid="stChatInput"] textarea::placeholder {
-    color: #A8BBAE !important;
-}
-</style>
-""", unsafe_allow_html=True)
     st.divider()
 
     if "food_chat_history" not in st.session_state:
@@ -1449,15 +1657,12 @@ Preferences: {preferences}
 
 IMPORTANT:
 - Include EVERY requested day.
-- Clearly label them Day 1, Day 2, Day 3, etc.
+- Clearly label them Day 1, Day 2, etc.
 - Include breakfast, lunch and dinner for EACH day.
 - Give different meals for every day.
 - Keep descriptions short and clear.
-- Never stop after Day 1.
 - Use balanced meals and ordinary ingredients.
-- Do not include calorie restrictions.
 """
-              
 
                 response = groq_client.chat.completions.create(
                     model="openai/gpt-oss-20b",
@@ -1476,16 +1681,100 @@ IMPORTANT:
                 )
 
                 meal_plan = response.choices[0].message.content
-
                 st.session_state.meal_plan = meal_plan
 
             except Exception as e:
                 st.error(f"Could not generate meal plan: {e}")
 
-    if "meal_plan" in st.session_state:
+        if "meal_plan" in st.session_state:
+            st.divider()
+            st.subheader("Your AI Meal Plan")
+            st.markdown(st.session_state.meal_plan)
+
+
+elif page == "👤 Profile":
+
+    st.title("My Profile")
+    st.caption("Your personal NUTRIMIND AI space.")
+    st.divider()
+
+    user_email = st.session_state.get("user_email", "")
+
+    st.subheader("Account Information")
+
+    st.write(f"**Name:** {st.session_state.get('user_name', 'User')}")
+    st.write(f"**Email:** {user_email}")
+
+    st.divider()
+
+    if  st.button("← Back to Home"):
+        st.session_state.show_profile = False
+        st.rerun()
+
+    st.subheader("My Favourite Recipes")
+
+    conn = get_db_connection()
+
+    favourites = conn.execute("""
+        SELECT id, recipe_name, recipe_content
+        FROM favourite_recipes
+        WHERE user_email = ?
+        ORDER BY created_at DESC
+    """, (user_email,)).fetchall()
+
+    conn.close()
+
+    if favourites:
+
+        for recipe_id, recipe_name, recipe_content in favourites:
+
+            with st.container(border=True):
+
+                st.subheader(recipe_name)
+                st.markdown(recipe_content)
+
+                if st.button(
+                    "Remove from Favourites",
+                    key=f"remove_fav_{recipe_id}"
+                ):
+
+                    conn = get_db_connection()
+
+                    conn.execute("""
+                        DELETE FROM favourite_recipes
+                        WHERE id = ? AND user_email = ?
+                    """, (recipe_id, user_email))
+
+                    conn.commit()
+                    conn.close()
+
+                    st.rerun()
+
+    else:
+        st.info("You haven't saved any recipes yet.")
+        st.write("Go to RecipeMentor and save your favourite recipes!")
+
+if "recipe_result" in st.session_state:
         st.divider()
-        st.subheader("Your AI Meal Plan")
-        st.markdown(st.session_state.meal_plan)
+
+        st.subheader("Your AI Recipe")
+        st.markdown(st.session_state.recipe_result)
+
+        st.divider()
+
+        if st.button("♡ Save to Favourites", key="save_recipe"):
+            user_email = st.session_state.get("user_email")
+
+            if user_email:
+                save_favourite_recipe(
+                    user_email,
+                    st.session_state.recipe_result
+                )
+
+                st.success("Recipe saved to your favourites!")
+
+            else:
+                st.error("Please log in to save recipes.")
 
 
 # # GLOBAL FOOTER
@@ -1501,3 +1790,240 @@ IMPORTANT:
 #     </p>
 # </div>
 # """, unsafe_allow_html=True)
+
+
+
+# =====================================
+# GLOBAL LIGHT MODE - NUTRIMIND AI
+# =====================================
+
+if st.session_state.get("theme") == "Light Mode":
+
+    st.markdown("""
+    <style>
+
+    /* MAIN BACKGROUND */
+    .stApp,
+    [data-testid="stAppViewContainer"],
+    [data-testid="stMain"],
+    [data-testid="stMainBlockContainer"] {
+        background: #E7F1E7 !important;
+        color: #294333 !important;
+    }
+
+    /* ALL TEXT */
+    h1, h2, h3, h4, h5, p, label, span, li,
+    .stMarkdown, .stCaption {
+        color: #294333 !important;
+    }
+
+    /* SIDEBAR */
+    [data-testid="stSidebar"] {
+        background: #D8E9D9 !important;
+        border-right: 1px solid #BBD4BE !important;
+    }
+
+    [data-testid="stSidebar"] * {
+        color: #294333 !important;
+    }
+
+    /* TEXT INPUTS */
+    .stTextInput input,
+    .stTextArea textarea,
+    .stNumberInput input,
+    .stDateInput input,
+    .stTimeInput input,
+    [data-testid="stChatInput"] textarea {
+        background: #D8E9D9 !important;
+        color: #294333 !important;
+        -webkit-text-fill-color: #294333 !important;
+        border: 1px solid #B5D0B9 !important;
+        border-radius: 11px !important;
+        box-shadow: none !important;
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+        color: #718D76 !important;
+        -webkit-text-fill-color: #718D76 !important;
+    }
+
+    /* INPUT FOCUS */
+    .stTextInput input:focus,
+    .stTextArea textarea:focus,
+    .stNumberInput input:focus {
+        border: 1px solid #72A77B !important;
+        box-shadow: 0 0 0 2px #72A77B25 !important;
+    }
+
+    /* SELECT BOXES */
+    [data-baseweb="select"] > div,
+    [data-baseweb="select"] input {
+        background: #D8E9D9 !important;
+        color: #294333 !important;
+        border-color: #B5D0B9 !important;
+    }
+
+    [data-baseweb="select"] span {
+        color: #294333 !important;
+    }
+
+    /* DROPDOWN MENUS */
+    [data-baseweb="popover"],
+    [data-baseweb="menu"],
+    [role="listbox"],
+    [role="option"] {
+        background: #D8E9D9 !important;
+        color: #294333 !important;
+    }
+
+    [role="option"]:hover,
+    [aria-selected="true"] {
+        background: #BBD9BF !important;
+        color: #23442D !important;
+    }
+
+    /* FILE UPLOADER */
+    [data-testid="stFileUploader"],
+    [data-testid="stFileUploader"] section,
+    [data-testid="stFileUploader"] section > div {
+        background: #D8E9D9 !important;
+        border-color: #A9CBAF !important;
+        border-radius: 13px !important;
+    }
+
+    [data-testid="stFileUploader"] section {
+        border: 1px dashed #83B38C !important;
+    }
+
+    [data-testid="stFileUploader"] button {
+        background: #B8D8BC !important;
+        color: #294333 !important;
+        border: 1px solid #A9CBAF !important;
+    }
+
+    [data-testid="stFileUploader"] * {
+        color: #294333 !important;
+    }
+
+    /* CAMERA INPUT */
+    [data-testid="stCameraInput"] {
+        background: #D8E9D9 !important;
+        border-radius: 13px !important;
+    }
+
+    /* BUTTONS */
+    .stButton > button,
+    .stDownloadButton > button,
+    [data-testid="stFormSubmitButton"] button {
+        background: #A9CDAE !important;
+        color: #23442D !important;
+        border: 1px solid #91BB98 !important;
+        border-radius: 10px !important;
+        font-weight: 600 !important;
+    }
+
+    .stButton > button:hover,
+    .stDownloadButton > button:hover,
+    [data-testid="stFormSubmitButton"] button:hover {
+        background: #91BD99 !important;
+        color: #1E3C27 !important;
+        border-color: #78A982 !important;
+    }
+
+    /* CARDS */
+    [data-testid="stMetric"],
+    [data-testid="stVerticalBlockBorderWrapper"],
+    [data-testid="stExpander"],
+    [data-testid="stChatMessage"],
+    [data-testid="stForm"] {
+        background: #D8E9D9 !important;
+        border: 1px solid #BDD5C0 !important;
+        border-radius: 14px !important;
+        color: #294333 !important;
+    }
+
+    /* CUSTOM MODULE CARDS */
+    .module-card {
+        background: #D8E9D9 !important;
+        border-color: #BDD5C0 !important;
+    }
+
+    .module-card h3 {
+        color: #34794A !important;
+    }
+
+    .module-card p {
+        color: #526B58 !important;
+    }
+
+    .module-card:hover {
+        background: #C9E1CC !important;
+        border-color: #8DB995 !important;
+    }
+
+    /* TABS */
+    [data-baseweb="tab-list"] {
+        background: #D8E9D9 !important;
+        border-radius: 10px !important;
+    }
+
+    [data-baseweb="tab"] {
+        color: #294333 !important;
+    }
+
+    [aria-selected="true"][data-baseweb="tab"] {
+        color: #34794A !important;
+    }
+
+    /* CHAT */
+    [data-testid="stChatMessage"] {
+        background: #D8E9D9 !important;
+        border: 1px solid #BDD5C0 !important;
+    }
+
+    [data-testid="stChatInput"],
+    [data-testid="stChatInput"] > div {
+        background: #D8E9D9 !important;
+        border-color: #B5D0B9 !important;
+    }
+
+    /* FOOTER */
+    .nutri-footer {
+        background: #D8E9D9 !important;
+        border-color: #BDD5C0 !important;
+    }
+
+    .nutri-footer h4 {
+        color: #34794A !important;
+    }
+
+    .nutri-footer p {
+        color: #526B58 !important;
+    }
+
+    /* DIVIDERS */
+    hr {
+        border-color: #BDD5C0 !important;
+    }
+
+    /* NUMBER INPUT BUTTONS */
+    [data-testid="stNumberInput"] button {
+        background: #C5DEC8 !important;
+        color: #294333 !important;
+        border-color: #B5D0B9 !important;
+    }
+
+    /* CHECKBOXES AND RADIO */
+    [data-testid="stCheckbox"],
+    [data-testid="stRadio"] {
+        color: #294333 !important;
+    }
+
+    /* SLIDERS */
+    [data-testid="stSlider"] {
+        color: #34794A !important;
+    }
+
+    </style>
+    """, unsafe_allow_html=True)

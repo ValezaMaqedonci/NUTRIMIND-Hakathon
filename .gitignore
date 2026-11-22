@@ -1,0 +1,10 @@
+# Python environments
+.venv/
+__pycache__/
+*.py[cod]
+
+# Streamlit local secrets
+.streamlit/secrets.toml
+
+# Local user database
+nutrimind_users.db
