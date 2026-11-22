@@ -2,13 +2,20 @@
 import streamlit as st
 from groq import Groq
 import base64
+import sqlite3
+import hashlib
+import secrets
+import hmac
 
 
-st.set_page_config(
-    page_title="NUTRIMIND AI",
-    page_icon="🥗",
-    layout="wide"
-)
+if not st.session_state.get("logged_in", False):
+    st.markdown("""
+    <style>
+    [data-testid="stSidebar"] {
+        display: none !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 
 st.markdown("""
@@ -386,9 +393,354 @@ h1, h2, h3 {
     animation: pageFade 0.8s ease-out;
 }
 
+/* MODULE CARDS */
+.module-card {
+    transition: all 0.35s ease !important;
+    position: relative;
+    overflow: hidden;
+}
+
+.module-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    border-color: #34D375 !important;
+    box-shadow: 0 12px 30px #34D37525;
+    background: #1B3A27 !important;
+}
+
+/* GLOW EFFECT */
+.module-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        110deg,
+        transparent,
+        #34D37515,
+        transparent
+    );
+    transition: left 0.6s ease;
+}
+
+.module-card:hover::before {
+    left: 100%;
+}
+
+/* HERO FLOATING EFFECT */
+@keyframes heroFloat {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-5px);
+    }
+}
+
+/* HERO GLOW */
+@keyframes heroGlow {
+    0%, 100% {
+        box-shadow: 0 0 10px #34D37510;
+    }
+    50% {
+        box-shadow: 0 0 25px #34D37530;
+    }
+}
+
+/* SMOOTH PAGE TRANSITION */
+.block-container {
+    animation: pageFade 0.7s ease-out;
+}
+
+/* INPUT FOCUS */
+.stTextInput input:focus,
+.stTextArea textarea:focus {
+    border-color: #34D375 !important;
+    box-shadow: 0 0 10px #34D37525 !important;
+}
+
+/* BUTTON GLOW */
+.stButton > button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 18px #34D37550;
+}
+
+/* REDUCE MOTION FOR ACCESSIBILITY */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
 </style>
 """, unsafe_allow_html=True)
 
+
+
+# =====================================
+# NUTRIMIND AI - LOGIN & SIGN UP SYSTEM
+# =====================================
+
+def get_db_connection():
+    conn = sqlite3.connect("nutrimind_users.db")
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            salt TEXT NOT NULL
+        )
+    """)
+
+    return conn
+
+
+def hash_password(password, salt):
+    return hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        bytes.fromhex(salt),
+        310000
+    ).hex()
+
+
+# SESSION STATE
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+
+if "user_name" not in st.session_state:
+    st.session_state.user_name = ""
+
+if "user_email" not in st.session_state:
+    st.session_state.user_email = ""
+
+if "auth_page" not in st.session_state:
+    st.session_state.auth_page = "login"
+
+
+# AUTHENTICATION SCREEN
+if not st.session_state.logged_in:
+
+    st.markdown("""
+    <style>
+    [data-testid="stSidebar"] {
+        display: none !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style="text-align:center; padding:35px 0 15px 0;">
+        <h1 style="color:#34D375; font-size:42px;">
+            NUTRIMIND AI
+        </h1>
+        <p style="color:#A8BBAE; letter-spacing:2px;">
+            SMART FOOD. SMARTER CHOICES.
+        </p>
+        <p style="color:#DCE9DF; font-size:17px;">
+            Your intelligent food companion starts here.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    left, center, right = st.columns([1, 1.3, 1])
+
+    with center:
+
+        # =========================
+        # LOGIN PAGE
+        # =========================
+        if st.session_state.auth_page == "login":
+
+            st.subheader("Welcome Back")
+            st.caption("Log in to continue to NUTRIMIND AI.")
+
+            with st.form("login_form"):
+
+                login_email = st.text_input(
+                    "Email",
+                    placeholder="Enter your email"
+                )
+
+                login_password = st.text_input(
+                    "Password",
+                    type="password",
+                    placeholder="Enter your password"
+                )
+
+                login_button = st.form_submit_button(
+                    "Login",
+                    use_container_width=True
+                )
+
+            if login_button:
+
+                if not login_email.strip() or not login_password:
+                    st.warning("Please enter your email and password.")
+
+                else:
+                    conn = get_db_connection()
+
+                    user = conn.execute(
+                        """
+                        SELECT id, name, email, password_hash, salt
+                        FROM users
+                        WHERE email = ?
+                        """,
+                        (login_email.strip().lower(),)
+                    ).fetchone()
+
+                    conn.close()
+
+                    if user:
+                        entered_hash = hash_password(
+                            login_password,
+                            user[4]
+                        )
+
+                        if hmac.compare_digest(entered_hash, user[3]):
+                            st.session_state.logged_in = True
+                            st.session_state.user_name = user[1]
+                            st.session_state.user_email = user[2]
+                            st.rerun()
+                        else:
+                            st.error("Incorrect email or password.")
+                    else:
+                        st.error("Incorrect email or password.")
+
+            st.markdown("""
+<p style="color:#A8BBAE; text-align:center;">
+    Don't have an account?
+    <a href="?auth=signup"
+       target="_self"
+       style="color:#34D375; text-decoration:none; font-weight:600;">
+       Sign Up
+    </a>
+</p>
+""", unsafe_allow_html=True)
+            st.rerun()
+
+        # =========================
+        # SIGN UP PAGE
+        # =========================
+        else:
+
+            st.subheader("Create Your Account")
+            st.caption("Join NUTRIMIND AI and explore all its features.")
+
+            with st.form("signup_form"):
+
+                signup_name = st.text_input(
+                    "Full Name",
+                    placeholder="Enter your name"
+                )
+
+                signup_email = st.text_input(
+                    "Email",
+                    placeholder="Enter your email"
+                )
+
+                signup_password = st.text_input(
+                    "Password",
+                    type="password",
+                    placeholder="Create a password"
+                )
+
+                confirm_password = st.text_input(
+                    "Confirm Password",
+                    type="password",
+                    placeholder="Confirm your password"
+                )
+
+                signup_button = st.form_submit_button(
+                    "Create Account",
+                    use_container_width=True
+                )
+
+            if signup_button:
+
+                if (
+                    not signup_name.strip()
+                    or not signup_email.strip()
+                    or not signup_password
+                    or not confirm_password
+                ):
+                    st.warning("Please complete all fields.")
+
+                elif "@" not in signup_email or "." not in signup_email:
+                    st.warning("Please enter a valid email address.")
+
+                elif len(signup_password) < 8:
+                    st.warning("Password must contain at least 8 characters.")
+
+                elif signup_password != confirm_password:
+                    st.error("Passwords do not match.")
+
+                else:
+                    salt = secrets.token_hex(16)
+
+                    password_hash = hash_password(
+                        signup_password,
+                        salt
+                    )
+
+                    conn = get_db_connection()
+
+                    try:
+                        conn.execute(
+                            """
+                            INSERT INTO users
+                            (name, email, password_hash, salt)
+                            VALUES (?, ?, ?, ?)
+                            """,
+                            (
+                                signup_name.strip(),
+                                signup_email.strip().lower(),
+                                password_hash,
+                                salt
+                            )
+                        )
+
+                        conn.commit()
+
+                        st.session_state.logged_in = True
+                        st.session_state.user_name = signup_name.strip()
+                        st.session_state.user_email = signup_email.strip().lower()
+
+                        st.success("Account created successfully!")
+                        st.rerun()
+
+                    except sqlite3.IntegrityError:
+                        st.error("An account with this email already exists.")
+
+                    finally:
+                        conn.close()
+
+                st.markdown("""
+<p style="color:#A8BBAE; text-align:center;">
+    Already have an account?
+    <a href="?auth=login"
+       target="_self"
+       style="color:#34D375; text-decoration:none; font-weight:600;">
+       Log In
+    </a>
+</p>
+""", unsafe_allow_html=True)
+                st.rerun()
+
+    # STOP ONLY WHEN USER IS NOT LOGGED IN
+    st.stop()
+
+
+# =====================================
+# USER IS LOGGED IN - SHOW THE APP
+# =====================================
 
 
 # SIDEBAR BRAND
@@ -442,7 +794,23 @@ color:#DCE9DF;
 </div>
 """, unsafe_allow_html=True)
 
+st.sidebar.markdown("---")
 
+st.sidebar.markdown(
+    f"""
+    <p style="color:#DCE9DF; font-size:14px; font-weight:600;">
+        Welcome, {st.session_state.user_name}
+    </p>
+    """,
+    unsafe_allow_html=True
+)
+
+if st.sidebar.button("Log Out", use_container_width=True):
+    st.session_state.logged_in = False
+    st.session_state.user_name = ""
+    st.session_state.user_email = ""
+    st.session_state.auth_page = "login"
+    st.rerun()
 
 if page == "🏠 Home":
 
@@ -456,6 +824,7 @@ if page == "🏠 Home":
         border-radius: 18px;
         border: 1px solid #34483b;
         margin: 15px 0 25px 0;
+        animation: heroGlow 4s ease-in-out infinite;
     ">
         <p style="color:#9fcea9; font-size:14px; letter-spacing:2px;">
             THE FUTURE OF SMART NUTRITION
@@ -504,13 +873,14 @@ if page == "🏠 Home":
         with cols[i % 3]:
 
             st.markdown(f"""
-            <div style="
-background:#163020;
-border:1px solid #244A33;
+            <div class="module-card" style="
+                background:#163020;
+                border:1px solid #244A33;
                 border-radius:14px;
                 padding:22px;
                 min-height:155px;
                 margin-bottom:15px;
+                transition: all 0.3s ease;
             ">
                 <h3 style="color:#a8d5b2; margin-bottom:12px;">
                     {name}
